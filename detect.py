@@ -18,9 +18,14 @@ def _get_model() -> YOLO:
     return _model
 
 
-def run_inference(img_bgr: np.ndarray) -> dict:
+def run_inference(img_bgr: np.ndarray, conf_override: float = None) -> dict:
     """
     Run YOLOv8 inference on a BGR numpy array.
+
+    Args:
+        img_bgr      : image as a BGR numpy array
+        conf_override: if given, overrides config.CONF_THRESHOLD for this call
+                        (used by the dashboard's confidence slider)
 
     Returns a dict with:
         bboxes      : list of [x1, y1, x2, y2] pixel coords
@@ -28,21 +33,22 @@ def run_inference(img_bgr: np.ndarray) -> dict:
         class_ids   : list of int
         img_h, img_w: original image dimensions
     """
-    model  = _get_model()
-    h, w   = img_bgr.shape[:2]
+    model = _get_model()
+    h, w  = img_bgr.shape[:2]
+    conf  = conf_override if conf_override is not None else CONF_THRESHOLD
 
     results = model.predict(
         source    = img_bgr,
-        conf      = CONF_THRESHOLD,
+        conf      = conf,
         iou       = IOU_THRESHOLD,
         imgsz     = 640,
         verbose   = False,
     )
 
     r          = results[0]
-    bboxes     = r.boxes.xyxy.cpu().numpy().tolist()   # [[x1,y1,x2,y2], ...]
-    confidences= r.boxes.conf.cpu().numpy().tolist()   # [0.87, 0.63, ...]
-    class_ids  = r.boxes.cls.cpu().numpy().tolist()    # [0, 0, ...]
+    bboxes     = r.boxes.xyxy.cpu().numpy().tolist()
+    confidences= r.boxes.conf.cpu().numpy().tolist()
+    class_ids  = r.boxes.cls.cpu().numpy().tolist()
 
     return {
         "bboxes":      bboxes,
